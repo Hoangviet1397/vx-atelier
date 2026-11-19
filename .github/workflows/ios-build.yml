@@ -98,6 +98,7 @@ jobs:
       # Sửa 20/11/2026: sync TRƯỚC test — test kiểm tra ios/App/App/public/ (do cap sync tạo ra) nên chạy test trước sync sẽ FAIL trên checkout mới.
       - name: Sync Capacitor → ios/
         run: npx cap sync ios
+
       - name: Test jsdom (app web — phải xanh mới build)
         run: |
           npm install --no-save jsdom
