@@ -1,0 +1,11 @@
+node_modules/
+build/
+*.log
+.DS_Store
+# KHÔNG BAO GIỜ commit secret / cert / key — xem BUILD-GUIDE.md mục 5.
+*.p12
+*.p8
+*.key
+*.pem
+*.mobileprovision
+certs/
