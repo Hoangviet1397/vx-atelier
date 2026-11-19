@@ -1,0 +1,185 @@
+# Build .ipa Atelier VX (Capacitor 8) trên GitHub Actions — macOS runner.
+# TRẠNG THÁI (20/11/2026): workflow CHƯA TỪNG CHẠY — cần làm xong các
+# bước trong BUILD-GUIDE.md mục 2–4 (repo mới + App ID + profile) và dán đủ 6 secret
+# (mục 5). Chứng chỉ Distribution và API key dùng CHUNG với FotoBro (đã có sẵn). Đẩy lên repo Hoangviet1397/vx-atelier (repo MỚI, chưa tạo — xem BUILD-GUIDE.md) — file này đã ở đúng chỗ
+# (.github/workflows/ios-build.yml) trong repo root.
+#
+# ⚠️ XCODE 26 BẮT BUỘC (kiểm tra 20/11/2026): từ 28/04/2026 App Store
+# Connect từ chối app build bằng Xcode dưới 26 (iOS 26 SDK). Runner
+# macos-15 có sẵn Xcode 26.0.1–26.3 NHƯNG mặc định là 16.4 — nên bước
+# chọn Xcode 26.3 dưới đây là bắt buộc, và có bước xác minh riêng sau đó.
+# macos-15 được chọn thay cho macos-26 theo chỉ đạo deadline (20/11):
+# rẻ/ổn định hơn, vẫn đủ Xcode 26. Từ tháng 4/2027 Apple sẽ yêu cầu
+# Xcode 27 / iOS 27 SDK — tới lúc đó phải nâng tiếp, xem RISKS.md mục 11.
+#
+# Signing: THỐNG NHẤT MANUAL (20/11/2026) — trước đây workflow export
+# manual nhưng project.pbxproj để CODE_SIGN_STYLE = Automatic nên mâu thuẫn.
+# Giờ pbxproj (Release) đã là Manual + iPhone Distribution + profile
+# "Atelier VX App Store"; ExportOptions.plist dưới đây cũng manual.
+# Tên profile lấy từ secret IOS_PROVISIONING_PROFILE_NAME (tuỳ chọn,
+# mặc định "Atelier VX App Store" nếu không đặt) — xem BUILD-GUIDE.md.
+#
+# Build number tự tăng mỗi lần chạy (agvtool new-version = run_number)
+# để lần chạy thứ 2 không bị App Store Connect từ chối trùng build.
+#
+# Cách chạy: Actions → "Build Atelier VX iOS" → Run workflow.
+# Kết quả: .ipa (đẩy thẳng lên TestFlight) + bản archive .xcarchive làm artifact.
+name: Build Atelier VX iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: 'Đẩy lên TestFlight luôn (true) hay chỉ build .ipa (false)'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Kiểm tra 6 secret đã đủ chưa
+        env:
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_P12_PASSWORD: ${{ secrets.IOS_DIST_CERT_P12_PASSWORD }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=""
+          for s in IOS_DIST_CERT_P12_BASE64 IOS_DIST_CERT_P12_PASSWORD APP_STORE_CONNECT_API_ISSUER_ID APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_API_KEY_BASE64 APPLE_TEAM_ID; do
+            if [ -z "${!s}" ]; then missing="$missing $s"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Thiếu secret GitHub Actions:$missing — thêm ở repo Settings → Secrets and variables → Actions (xem BUILD-GUIDE.md mục 5)"
+            exit 1
+          fi
+          echo "Đủ 6 secret bắt buộc."
+
+      # Sửa 01:37 20/11/2026: bỏ action maximedenes/xcode-select@v1 — repo
+      # action này đã không còn tồn tại trên GitHub nên job lỗi ngay ở bước
+      # "Set up job" (lần chạy #1 thất bại sau 8 giây). Chọn Xcode trực tiếp
+      # bằng xcode-select, bước Xác minh Xcode 26 phía dưới giữ nguyên.
+      - name: Chọn Xcode 26.3
+        run: |
+          if [ -d /Applications/Xcode_26.3.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.app
+          else
+            echo "::error::Không thấy /Applications/Xcode_26.3.app — các bản Xcode có sẵn:"; ls /Applications | grep -i Xcode; exit 1
+          fi
+          xcodebuild -version
+
+      - name: Xác minh Xcode 26
+        run: |
+          xcodebuild -version
+          v=$(xcodebuild -version | head -1 | awk '{print $2}')
+          major=${v%%.*}
+          if [ "$major" != "26" ]; then
+            echo "::error::Xcode phải là 26.x (App Store Connect từ chối < 26 từ 28/04/2026), đang là $v"
+            exit 1
+          fi
+          echo "Xcode $v — OK."
+
+      - name: Cài Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Cài dependencies
+        run: npm ci
+
+      - name: Test jsdom (app web — phải xanh mới build)
+        run: |
+          npm install --no-save jsdom
+          NODE_PATH=node_modules node test-vx-atelier-v1.js
+
+      - name: Sync Capacitor → ios/
+        run: npx cap sync ios
+
+      - name: Tăng build number (tránh trùng build trên App Store Connect)
+        run: |
+          cd ios/App
+          agvtool new-version -all ${{ github.run_number }}
+          echo "Build number mới: ${{ github.run_number }}"
+
+      # BLE (rủi ro lớn nhất, xem README.md): cầu nối native-ble.js dùng
+      # plugin @capacitor-community/bluetooth-le 8.x qua window.Capacitor.Plugins.
+      # Nếu build lỗi "No such module 'CapacitorCommunityBluetoothLe'" thì
+      # Package.swift (ios/App/CapApp-SPM/) chưa có plugin — chạy lại
+      # `npx cap sync ios` rồi đẩy lại. Nếu app chạy nhưng không thấy loa,
+      # xem README.md mục "Kiểm tra BLE trên iPhone thật".
+
+      - name: Import Distribution Certificate (.p12)
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_DIST_CERT_P12_PASSWORD }}
+
+      - name: Tải Provisioning Profile (App Store)
+        uses: apple-actions/download-provisioning-profiles@v3
+        with:
+          bundle-id: com.vx.atelier
+          profile-type: APP_STORE
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+
+      - name: Tạo ExportOptions.plist
+        run: |
+          PROFILE_NAME="${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}"
+          PROFILE_NAME="${PROFILE_NAME:-Atelier VX App Store}"
+          echo "Dùng provisioning profile: $PROFILE_NAME"
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.vx.atelier</key><string>$PROFILE_NAME</string>
+            </dict>
+            <key>signingStyle</key><string>manual</string>
+            <key>stripSwiftSymbols</key><true/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Archive (xcodebuild)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/AtelierVX.xcarchive \
+            archive
+
+      - name: Export .ipa
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/AtelierVX.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Lưu .ipa làm artifact (dù có đẩy TestFlight hay không)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AtelierVX-ipa
+          path: build/ipa/*.ipa
+
+      - name: Đẩy lên TestFlight
+        if: inputs.upload_testflight == 'true'
+        uses: apple-actions/upload-testflight-build@v3
+        with:
+          app-path: build/ipa/*.ipa
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
