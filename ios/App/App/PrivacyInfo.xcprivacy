@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Atelier VX iOS v1.0 — Privacy manifest (App Store yêu cầu từ mùa xuân 2024).
+	     App KHÔNG tracking, KHÔNG thu thập dữ liệu: điều khiển loa và đo phòng
+	     đều xử lý trên máy, không có máy chủ. Không dùng @capacitor/preferences
+	     nên không khai UserDefaults; API duy nhất cần khai là File Timestamp
+	     qua localStorage/WebKit (lý do DDA9.1: đọc/ghi dữ liệu chỉ của riêng app). -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>DDA9.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
