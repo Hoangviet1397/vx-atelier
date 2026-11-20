@@ -103,11 +103,13 @@ const vx3dJs = read('www/vx3d.js');
   t('connect có timeout 12000', bleJs.includes('timeout: 12000'));
   t('getDevices trả về r.devices', bleJs.includes('r.devices'));
   t('www/index.html đúng 240411 bytes như vx-mark4 ee17df1', fs.statSync(path.join(ROOT, 'www/index.html')).size === 240411);
-  t('www/native-ble.js đúng 7939 bytes (bản vx-atelier có thêm Native UI fixes 21/11/2026)', fs.statSync(path.join(ROOT, 'www/native-ble.js')).size === 7939);
+  t('www/native-ble.js đúng 9063 bytes (bản vx-atelier có thêm Native UI fixes 21/11/2026)', fs.statSync(path.join(ROOT, 'www/native-ble.js')).size === 9063);
   t('www/vx3d.js đúng 18372 bytes như vx-mark4 ee17df1', fs.statSync(path.join(ROOT, 'www/vx3d.js')).size === 18372);
   t('native-ble.js khóa zoom (viewport maximum-scale=1, user-scalable=no)', bleJs.includes('maximum-scale=1') && bleJs.includes('user-scalable=no'));
   t('native-ble.js chặn cuộn ngang + chạm đúp zoom', bleJs.includes('overflow-x:clip') && bleJs.includes('touch-action:manipulation'));
   t('native-ble.js đồng bộ StatusBar theo theme', bleJs.includes('StatusBar') && bleJs.includes('setStyle') && bleJs.includes('prefers-color-scheme: dark'));
+  t('native-ble.js cắt tên đài Radio tràn mép (sửa 21/11/2026)', bleJs.includes('.station .st-main span{overflow:hidden}') && bleJs.includes('.station .st-main span b,.station .st-main span small{max-width:100%}'));
+  t('native-ble.js ẩn tab bar khi bàn phím mở (sửa 21/11/2026)', bleJs.includes('body.kb-open nav.tabs{display:none}') && bleJs.includes('focusin') && bleJs.includes('kb-open'));
 
   console.log('\n[4] Config: package / Capacitor / Xcode / Info.plist / Privacy / Package.swift');
   const pkg = JSON.parse(read('package.json'));
