@@ -11,6 +11,12 @@
 // (event.target.value = DataView of exactly the payload).
 //
 // Not run on a phone yet: check on the first APK build (see app/README.md).
+//
+// NOTE (vx-atelier, 21/11/2026): this copy has native-only additions that the
+// vx-mark4 web copy does NOT have — the "Native UI fixes" block at the end
+// (viewport zoom lock + StatusBar style sync). Do NOT overwrite this file by
+// re-copying www/ from vx-mark4, or those fixes are lost; re-apply them.
+// The jsdom test checks the file size, so update the test when editing here.
 (function () {
   'use strict';
   const C = window.Capacitor;
@@ -92,4 +98,47 @@
     native: true
   };
   window.VX_NATIVE = true;
+
+  // ---------- Native UI fixes (21/11/2026, only in this vx-atelier copy) ----------
+  // The page's own viewport meta has no maximum-scale, so WKWebView allows
+  // pinch / double-tap zoom and the iOS input-focus zoom — the app could end
+  // up zoomed with the right edge cut off ("tự nhiên bị zoom lên"). The page
+  // itself must stay untouched (it is copied from vx-mark4), so lock the scale
+  // here at load instead. A fresh launch loads with the locked meta, so any
+  // zoomed state from the previous build is gone.
+  // StatusBar style also needs to follow the page theme: the Capacitor config
+  // can only set one static style (DARK, matching the page's dark default),
+  // but the page is light (#f3f1ec) when the system is in light mode, where
+  // white status text would be invisible. Sync it at load, on system theme
+  // change, and when the page switches data-theme.
+  try {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+    const st = document.createElement('style');
+    st.textContent = 'html,body{overflow-x:clip}body{touch-action:manipulation}';
+    document.head.appendChild(st);
+  } catch {}
+  try {
+    const SB = C.Plugins && C.Plugins.StatusBar;
+    if (SB && typeof SB.setStyle === 'function') {
+      const darkNow = () => {
+        try {
+          const t = document.documentElement.getAttribute('data-theme');
+          if (t === 'dark') return true;
+          if (t === 'light') return false;
+          return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } catch { return true; }
+      };
+      const sync = () => { try { SB.setStyle({ style: darkNow() ? 'DARK' : 'LIGHT' }); } catch {} };
+      sync();
+      try {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq.addEventListener) mq.addEventListener('change', sync);
+        else if (mq.addListener) mq.addListener(sync);
+      } catch {}
+      try {
+        new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      } catch {}
+    }
+  } catch {}
 })();
