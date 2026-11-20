@@ -95,7 +95,8 @@ jobs:
       - name: Cài dependencies
         run: npm ci
 
-      # Sửa 20/11/2026: sync TRƯỚC test — test kiểm tra ios/App/App/public/ (do cap sync tạo ra) nên chạy test trước sync sẽ FAIL trên checkout mới.
+      # Sửa 20/11/2026: sync TRƯỚC test — test kiểm tra ios/App/App/public/
+      # (do cap sync tạo ra) nên chạy test trước sync sẽ FAIL trên checkout mới.
       - name: Sync Capacitor → ios/
         run: npx cap sync ios
 
@@ -127,7 +128,7 @@ jobs:
         uses: apple-actions/download-provisioning-profiles@v3
         with:
           bundle-id: com.vx.atelier
-          profile-type: IOS_APP_STORE
+          profile-type: APP_STORE
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
@@ -176,11 +177,22 @@ jobs:
           name: AtelierVX-ipa
           path: build/ipa/*.ipa
 
+      - name: Tìm file .ipa (đường dẫn cụ thể cho altool)
+        id: find-ipa
+        if: inputs.upload_testflight == 'true'
+        run: |
+          IPA_PATH=$(ls build/ipa/*.ipa | head -n 1)
+          if [ -z "$IPA_PATH" ] || [ ! -f "$IPA_PATH" ]; then
+            echo "::error::Không tìm thấy file .ipa trong build/ipa/"; ls -la build/ipa/ || true; exit 1
+          fi
+          echo "ipa-path=$IPA_PATH" >> "$GITHUB_OUTPUT"
+          echo "File .ipa: $IPA_PATH"
+
       - name: Đẩy lên TestFlight
         if: inputs.upload_testflight == 'true'
         uses: apple-actions/upload-testflight-build@v3
         with:
-          app-path: build/ipa/*.ipa
+          app-path: ${{ steps.find-ipa.outputs.ipa-path }}
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
