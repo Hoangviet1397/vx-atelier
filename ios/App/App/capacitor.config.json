@@ -4,7 +4,7 @@
 	"webDir": "www",
 	"backgroundColor": "#0B0B0C",
 	"ios": {
-		"contentInset": "always"
+		"contentInset": "never"
 	},
 	"server": {
 		"androidScheme": "https"
@@ -18,8 +18,7 @@
 		},
 		"StatusBar": {
 			"style": "DARK",
-			"backgroundColor": "#0B0B0C",
-			"overlaysWebView": false
+			"overlaysWebView": true
 		}
 	},
 	"packageClassList": [
