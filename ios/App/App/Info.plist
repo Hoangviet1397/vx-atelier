@@ -25,9 +25,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Atelier VX cần Bluetooth để nối với loa V&X mark 4 qua Bluetooth LE và điều khiển âm thanh (Beosonic, vị trí đặt loa, đo phòng).</string>
+	<string>Atelier VX cần Bluetooth để nối với loa V&amp;X mark 4 qua Bluetooth LE và điều khiển âm thanh (Beosonic, vị trí đặt loa, đo phòng).</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Atelier VX cần Bluetooth để nối với loa V&X mark 4 qua Bluetooth LE và điều khiển âm thanh.</string>
+	<string>Atelier VX cần Bluetooth để nối với loa V&amp;X mark 4 qua Bluetooth LE và điều khiển âm thanh.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Atelier VX cần mic khi bạn đo phòng: loa phát tín hiệu sweep, mic iPhone nghe lại để tính đáp ứng phòng. Âm thanh đo chỉ dùng trên máy, không gửi đi đâu.</string>
 	<key>UIApplicationSceneManifest</key>
