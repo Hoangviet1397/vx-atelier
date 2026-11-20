@@ -111,12 +111,27 @@
   // but the page is light (#f3f1ec) when the system is in light mode, where
   // white status text would be invisible. Sync it at load, on system theme
   // change, and when the page switches data-theme.
+  // Radio list (21/11/2026, build 13): the station name/tag are flex items in
+  // a column flex container with align-items:flex-start, so a long name takes
+  // its full max-content width and paints past the card edge over the heart
+  // button — the page's own ellipsis never triggers. Cap them at the row width
+  // here. And when the keyboard opens (radio search focused), iOS docks the
+  // fixed tab bar above the keyboard while the list keeps scrolling under it,
+  // so the bar ends up floating mid-screen; hide it while typing instead.
   try {
     const meta = document.querySelector('meta[name="viewport"]');
     if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
     const st = document.createElement('style');
-    st.textContent = 'html,body{overflow-x:clip}body{touch-action:manipulation}';
+    st.textContent = 'html,body{overflow-x:clip}body{touch-action:manipulation}'
+      + '.station .st-main span{overflow:hidden}'
+      + '.station .st-main span b,.station .st-main span small{max-width:100%}'
+      + 'body.kb-open nav.tabs{display:none}';
     document.head.appendChild(st);
+    const isField = el => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+    document.addEventListener('focusin', e => { if (isField(e.target)) document.body.classList.add('kb-open'); });
+    document.addEventListener('focusout', () => {
+      setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove('kb-open'); }, 0);
+    });
   } catch {}
   try {
     const SB = C.Plugins && C.Plugins.StatusBar;
