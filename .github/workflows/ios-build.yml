@@ -128,7 +128,7 @@ jobs:
         uses: apple-actions/download-provisioning-profiles@v3
         with:
           bundle-id: com.vx.atelier
-          profile-type: APP_STORE
+          profile-type: IOS_APP_STORE
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
