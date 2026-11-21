@@ -1,0 +1,350 @@
+{
+  "models": [
+    {
+      "about": "Cặp loa bookshelf không dây, chế tác thủ công tại Atelier VX để mang tiếng nhạc tự nhiên, cân bằng vào căn phòng nhỏ.",
+      "capabilities": {
+        "builtinModes": false,
+        "identify": false,
+        "placement": true,
+        "radio": true,
+        "roomMeasurement": true,
+        "stereoPair": true,
+        "swapLeftRight": true,
+        "tone": true,
+        "usb": true,
+        "userModes": true
+      },
+      "discovery": {
+        "bleNamePrefixes": [
+          "VX",
+          "V&X"
+        ],
+        "modelIds": [
+          4
+        ],
+        "serviceUuids": [
+          "00001100-d102-11e1-9b23-00025b00a5a5"
+        ]
+      },
+      "displayName": "Lento",
+      "firmware": {
+        "fallbackFeatures": 31,
+        "fallbackNote": "Firmware cũ (trước 2.1) không trả lời GET_INFO: mặc định model 4, features = 31 (tone|placement|stereoPair|usb, không có roomMeasurement/swapLeftRight). Đo phòng và đổi trái/phải chỉ mở khi firmware mới trả bit 32/64 qua GET_INFO.",
+        "featureBits": {
+          "placement": 2,
+          "roomMeasurement": 32,
+          "stereoPair": 4,
+          "swapLeftRight": 64,
+          "tone": 1,
+          "usb": 8
+        }
+      },
+      "fullName": "V&X mark 4",
+      "highlights": [
+        [
+          "wave",
+          "Âm thanh liền mạch",
+          "Phân tần chủ động 3 kHz, treble và bass được chỉnh cho cùng pha."
+        ],
+        [
+          "pair",
+          "Stereo không dây",
+          "Hai loa tự tìm nhau, chỉnh một loa là cả cặp đổi theo."
+        ],
+        [
+          "room",
+          "Hợp mọi chỗ đặt",
+          "Free, Wall, Corner: bass gọn dù loa đứng giữa phòng hay sát góc."
+        ]
+      ],
+      "id": "vx-mark4",
+      "image": "img/speaker-front.png",
+      "limits": {
+        "maxRememberedDevices": 4
+      },
+      "minFirmware": "2.1",
+      "minProto": 0,
+      "modelId": 4,
+      "modes": {
+        "builtin": [
+          {
+            "angle": 0,
+            "distance": 0,
+            "name": "Optimal"
+          },
+          {
+            "angle": 180,
+            "distance": 15,
+            "name": "Clear"
+          },
+          {
+            "angle": 315,
+            "distance": 15,
+            "name": "Dark"
+          },
+          {
+            "angle": 225,
+            "distance": 15,
+            "name": "Podcast"
+          }
+        ],
+        "userSaved": {
+          "enabled": true,
+          "maxNameLength": 18,
+          "storageKey": "vx.modes"
+        }
+      },
+      "notes": "Profile duy nhất của catalogue cho tới khi có model thứ hai thật (D3 chưa chốt — không bịa profile). Lệnh identify (0x000A) đã định nghĩa trong firmware nhưng chưa có chỗ gọi nên capabilities.identify = false. Không giới hạn số chế độ người dùng tự lưu trong code hiện tại, vì vậy limits không đặt maxSavedModes.",
+      "pairing": {
+        "maxSpeakers": 2,
+        "twsPairHint": "Bật loa thứ hai để gần, giữ Rew + Play trên loa đó khoảng 3 giây."
+      },
+      "placement": {
+        "default": "free",
+        "options": [
+          {
+            "firmwareCompensation": "không bù",
+            "id": "free",
+            "label": "Free",
+            "note": "Loa cách tường trên 50 cm. Âm chuẩn, không bù."
+          },
+          {
+            "firmwareCompensation": "−4 dB @ 100 Hz",
+            "id": "wall",
+            "label": "Wall",
+            "note": "Loa sát tường sau: giảm 4 dB quanh 100 Hz cho bass gọn lại."
+          },
+          {
+            "firmwareCompensation": "−7 dB @ 90 Hz, bù nhẹ 250 Hz",
+            "id": "corner",
+            "label": "Corner",
+            "note": "Loa trong góc phòng: giảm 7 dB quanh 90 Hz, bù nhẹ 250 Hz."
+          }
+        ]
+      },
+      "protocol": {
+        "commandUuid": "00001101-d102-11e1-9b23-00025b00a5a5",
+        "commands": {
+          "getInfo": 4,
+          "getState": 1,
+          "identify": 10,
+          "roomEqEnable": 8,
+          "roomMeasure": 7,
+          "setPlacement": 3,
+          "setRole": 9,
+          "setRoomEq": 6,
+          "setTone": 2,
+          "tws": 5
+        },
+        "connectTimeoutMs": 12000,
+        "infoTimeoutMs": 1500,
+        "maxDistance": 50,
+        "packet": {
+          "headerBytes": 4,
+          "responseCmdFlag": 32768
+        },
+        "pollIntervalMs": 3000,
+        "responseUuid": "00001102-d102-11e1-9b23-00025b00a5a5",
+        "serviceUuid": "00001100-d102-11e1-9b23-00025b00a5a5",
+        "toneEncoding": "polar",
+        "transport": "gaia",
+        "vendorId": 30296
+      },
+      "radio": {
+        "builtinStations": {
+          "vn": [
+            {
+              "hls": true,
+              "id": "vov1",
+              "name": "VOV1",
+              "tag": "Thời sự",
+              "url": "https://audio-lss.vov.vn/live/vov1.m3u8"
+            },
+            {
+              "hls": true,
+              "id": "vov2",
+              "name": "VOV2",
+              "tag": "Văn hoá, đời sống",
+              "url": "https://audio-lss.vov.vn/live/vov2.m3u8"
+            },
+            {
+              "hls": true,
+              "id": "vov3",
+              "name": "VOV3",
+              "tag": "Âm nhạc",
+              "url": "https://audio-lss.vov.vn/live/vov3.m3u8"
+            },
+            {
+              "hls": true,
+              "id": "vovgthn",
+              "name": "VOV Giao thông",
+              "tag": "Hà Nội · FM 91",
+              "url": "https://play.vovgiaothong.vn/live/gthn/playlist.m3u8"
+            },
+            {
+              "hls": true,
+              "id": "vovgthcm",
+              "name": "VOV Giao thông",
+              "tag": "TP.HCM · FM 91",
+              "url": "https://play.vovgiaothong.vn/live/gthcm/playlist.m3u8"
+            },
+            {
+              "id": "hncr",
+              "name": "Hà Nội Community Radio",
+              "tag": "Nhạc chọn lọc",
+              "url": "https://ha-noi-community-radio.radiocult.fm/stream"
+            },
+            {
+              "id": "rfivn",
+              "name": "RFI Tiếng Việt",
+              "tag": "Tin tức",
+              "url": "https://rfienvietnamien64k.ice.infomaniak.ch/rfienvietnamien-64.mp3"
+            }
+          ],
+          "world": [
+            {
+              "id": "rp",
+              "name": "Radio Paradise",
+              "tag": "Main mix · 320k",
+              "url": "https://stream.radioparadise.com/aac-320"
+            },
+            {
+              "id": "rpmellow",
+              "name": "Radio Paradise",
+              "tag": "Mellow · 320k",
+              "url": "https://stream.radioparadise.com/mellow-320"
+            },
+            {
+              "id": "fip",
+              "name": "FIP",
+              "tag": "Paris · eclectic",
+              "url": "https://icecast.radiofrance.fr/fip-hifi.aac"
+            },
+            {
+              "id": "fipjazz",
+              "name": "FIP Jazz",
+              "tag": "Paris · jazz",
+              "url": "https://icecast.radiofrance.fr/fipjazz-hifi.aac"
+            },
+            {
+              "id": "fipgroove",
+              "name": "FIP Groove",
+              "tag": "Paris · soul, funk",
+              "url": "https://icecast.radiofrance.fr/fipgroove-hifi.aac"
+            },
+            {
+              "id": "kexp",
+              "name": "KEXP",
+              "tag": "Seattle · indie",
+              "url": "https://kexp.streamguys1.com/kexp160.aac"
+            }
+          ]
+        },
+        "favouritesStorageKey": "vx.radioFavs",
+        "search": {
+          "limit": 40,
+          "provider": "radio-browser.info"
+        }
+      },
+      "room": {
+        "analysis": {
+          "cutHiHz": 300,
+          "cutLoHz": 30,
+          "fMaxHz": 1000,
+          "fMinHz": 20,
+          "maxBands": 3,
+          "maxCutDb": 12,
+          "minExcessDb": 2,
+          "pointsPerOctave": 48
+        },
+        "maxPeak": 0.98,
+        "measureTimeoutSec": 120,
+        "minSnrDb": 10,
+        "requiresMicrophone": true,
+        "speakerPlaysSweepFromProto": 5,
+        "spots": [
+          "Ngồi đúng chỗ nghe, cầm iPhone ngang tai.",
+          "Dịch iPhone sang trái khoảng 30 cm, vẫn ngang tai.",
+          "Dịch iPhone sang phải khoảng 30 cm, vẫn ngang tai.",
+          "Đưa iPhone lên cao hơn đầu khoảng một gang tay."
+        ],
+        "storageKey": "vx.room",
+        "sweep": {
+          "durationSec": 4,
+          "fMaxHz": 2000,
+          "fMinHz": 15,
+          "levelDbfs": -12
+        },
+        "sweeps": 4,
+        "target": {
+          "bassTiltDbAt40Hz": 2,
+          "flatFromHz": 200,
+          "flatToHz": 1000
+        },
+        "timing": {
+          "preSec": 0.4,
+          "speakerWaitSec": 1.8,
+          "tailSec": 1.8
+        }
+      },
+      "specs": [
+        [
+          "Loa bass",
+          "5.5″"
+        ],
+        [
+          "Loa treble",
+          "1″ dome"
+        ],
+        [
+          "Phân tần",
+          "3 kHz, LR4"
+        ],
+        [
+          "Thùng",
+          "Kín"
+        ],
+        [
+          "Kết nối",
+          "Bluetooth, USB"
+        ],
+        [
+          "Điều khiển",
+          "App VX"
+        ]
+      ],
+      "tagline": "Cặp loa không dây chủ động hai đường tiếng",
+      "tier": "standard",
+      "tone": {
+        "bands": [
+          {
+            "defaultDb": 0,
+            "key": "bass",
+            "label": "Bass",
+            "maxDb": 6,
+            "minDb": -6,
+            "stepDb": 0.5
+          },
+          {
+            "defaultDb": 0,
+            "key": "treble",
+            "label": "Treble",
+            "maxDb": 8,
+            "minDb": -8,
+            "stepDb": 0.5
+          }
+        ],
+        "ui": {
+          "control": "stepper",
+          "doubleTapResetsToZero": true,
+          "sendOnReleaseOnly": true
+        },
+        "wireMax": {
+          "bass": 6,
+          "treble": 8
+        }
+      }
+    }
+  ],
+  "schemaVersion": 1
+}
