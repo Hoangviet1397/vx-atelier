@@ -4,7 +4,12 @@
    Lưu ý jsdom:
    - jsdom KHÔNG có matchMedia / ResizeObserver / WebGL / Web Bluetooth
      (trình duyệt thật và WKWebView đều có, trừ Web Bluetooth — xem README).
-     Test stub 2 cái đầu để app khởi động được như trên trình duyệt thật.
+     Test stub 3 cái đầu để app khởi động được như trên trình duyệt thật.
+     jsdom cũng KHÔNG implement window.scrollTo — app gọi nó khi splash tự
+     tắt (leaveSplash → openProduct → showScreen/showTab) nên phải stub
+     no-op, nếu không lỗi "Not implemented: Window's scrollTo() method" sẽ
+     rơi vào assert "trang tải không lỗi jsdom" một cách flaky (tùy máy
+     nhanh/chậm, xem ghi chú ở mục [1]).
    - jsdom mặc định KHÔNG tải script src ngoài, nên native-ble.js và vx3d.js
      được eval tay từ file để kiểm tra chúng định nghĩa đúng API.
    - App web đặt interval (poll loa) nên Node không tự thoát: cuối file
@@ -30,9 +35,14 @@ function eq(name, got, want) { t(name, got === want, 'got=' + JSON.stringify(got
 const html = read('www/index.html');
 const bleJs = read('www/native-ble.js');
 const vx3dJs = read('www/vx3d.js');
+// G1/G2: hằng số loa sống trong catalogue, loader + codec nạp riêng.
+const profileJs = read('www/speaker-profile.js');
+const toneCodecJs = read('www/tone-codec.js');
+const profileJson = JSON.parse(read('www/speaker-profiles.json'));
+const mark4Profile = profileJson.models.find(m => m.id === 'vx-mark4');
 
 (async () => {
-  console.log('[1] Trang web tải được trong jsdom (stub matchMedia/ResizeObserver như trình duyệt thật)');
+  console.log('[1] Trang web tải được trong jsdom (stub matchMedia/ResizeObserver/scrollTo như trình duyệt thật)');
   const vc = new VirtualConsole();
   const errors = [];
   vc.on('jsdomError', e => errors.push(String((e && e.message) || e)));
@@ -41,6 +51,12 @@ const vx3dJs = read('www/vx3d.js');
     beforeParse(w) {
       w.matchMedia = w.matchMedia || (q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
       w.ResizeObserver = w.ResizeObserver || class { observe() {} unobserve() {} disconnect() {} };
+      // jsdom không implement scrollTo; app gọi nó khi splash tự tắt sau 1500ms
+      // (leaveSplash → openProduct → showScreen/showTab). Không stub thì 2 lỗi
+      // "Not implemented: Window's scrollTo() method" rơi vào errors — trước
+      // hay sau assert load+300ms tùy tốc độ máy nên test flaky (102/1 FAIL
+      // khi chạy song song / máy tải nặng, 103/0 khi chạy lẻ trên máy nhanh).
+      w.scrollTo = () => {};
     },
   });
   await new Promise(r => dom.window.addEventListener('load', r));
@@ -65,8 +81,12 @@ const vx3dJs = read('www/vx3d.js');
   t('img/lento.bin có magic VX3D', lento.slice(0, 4).toString() === 'VX3D');
 
   console.log('\n[2] Nội dung web: GAIA/BLE + tài nguyên local + URL ngoài');
-  t('có service GAIA 00001100-d102-11e1-9b23-00025b00a5a5', html.includes('00001100-d102-11e1-9b23-00025b00a5a5'));
-  t('có characteristic GAIA command/response', html.includes('00001101-d102-11e1-9b23-00025b00a5a5') && html.includes('00001102-d102-11e1-9b23-00025b00a5a5'));
+  // G1 (21/11/2026): UUID GAIA không còn là literal trong index.html — hằng
+  // số loa sống trong www/speaker-profiles.json, index.html chỉ nạp profile
+  // (thẻ script speaker-profile.js + loadCatalogueFromUrl) rồi đọc từ đó.
+  t('service GAIA 00001100-... trong speaker-profiles.json', !!mark4Profile && mark4Profile.protocol.serviceUuid === '00001100-d102-11e1-9b23-00025b00a5a5' && (mark4Profile.discovery.serviceUuids || []).includes('00001100-d102-11e1-9b23-00025b00a5a5'));
+  t('characteristic GAIA command/response trong speaker-profiles.json', !!mark4Profile && mark4Profile.protocol.commandUuid === '00001101-d102-11e1-9b23-00025b00a5a5' && mark4Profile.protocol.responseUuid === '00001102-d102-11e1-9b23-00025b00a5a5');
+  t('index.html nạp profile (script speaker-profile.js + loadCatalogueFromUrl)', html.includes('<script src="speaker-profile.js') && html.includes("loadCatalogueFromUrl('speaker-profiles.json')"));
   t('có script native-ble.js?v=2', html.includes('native-ble.js?v=2'));
   t('có script vx3d.js?v=3', html.includes('vx3d.js?v=3'));
   t('có load img/lento.bin', html.includes("img/lento.bin"));
@@ -102,7 +122,23 @@ const vx3dJs = read('www/vx3d.js');
   t('disconnect dùng key disconnected|deviceId', bleJs.includes('disconnected|${this.dev.id}'));
   t('connect có timeout 12000', bleJs.includes('timeout: 12000'));
   t('getDevices trả về r.devices', bleJs.includes('r.devices'));
-  t('www/index.html đúng 240411 bytes như vx-mark4 ee17df1', fs.statSync(path.join(ROOT, 'www/index.html')).size === 240411);
+  // G1/G2 (21/11/2026): BỎ assert "www/index.html đúng 240411 bytes như
+  // vx-mark4 ee17df1" — Việt chốt D1=B tách vx-atelier thành code riêng nên
+  // kích thước byte không còn ý nghĩa (vòng + preset đã gỡ, stepper +
+  // profile đã thêm, file nay 219336 bytes); thay bằng các assert cấu trúc
+  // dưới đây, kiểm tra đúng thứ đã đổi thay vì đếm byte.
+  t('index.html có 2 hàng stepper Bass/Treble', doc.querySelectorAll('.stepper').length === 2 && !!doc.querySelector('.stepper[data-k="bass"]') && !!doc.querySelector('.stepper[data-k="treble"]'), doc.querySelectorAll('.stepper').length);
+  t('index.html nạp speaker-profile.js + tone-codec.js', html.includes('<script src="speaker-profile.js?v=1">') && html.includes('<script src="tone-codec.js?v=1">'));
+  t('index.html không còn markup vòng (không id/class wheel/knob, không hàm polarFromTone cũ)', !doc.getElementById('wheel') && doc.querySelectorAll('.tknob, .wheel').length === 0 && !/id="[^"]*wheel|class="[^"]*\b(wheel|knob)\b/.test(html) && !html.includes('polarFromTone'));
+  // Không assert vắng chuỗi "Dark" nói chung: "Dark" vẫn xuất hiện hợp lệ
+  // trong code theme dark mode (isDark). Nhắm đúng UI preset cũ: #modes,
+  // #saveLink/#saveBox, chuỗi "+ Lưu chế độ".
+  t('index.html không còn UI preset (#modes/#saveLink/#saveBox, "+ Lưu chế độ")', !doc.getElementById('modes') && !doc.getElementById('saveLink') && !doc.getElementById('saveBox') && !html.includes('Lưu chế độ'));
+  // "Beosonic" là nhãn hiệu B&O: không được hiện ở chuỗi hiển thị, chỉ còn
+  // tên lệnh firmware CMD_SET_BEOSONIC trong code (hiện đúng 4 chỗ).
+  const beoAll = html.match(/beosonic/gi) || [];
+  const beoCmd = html.match(/CMD_SET_BEOSONIC/g) || [];
+  t('không có chữ Beosonic ngoài tên lệnh firmware CMD_SET_BEOSONIC (đúng 4 chỗ)', beoAll.length === 4 && beoCmd.length === 4 && html.replace(/CMD_SET_BEOSONIC/g, '').search(/beosonic/i) === -1, 'beosonic=' + beoAll.length + ' cmd=' + beoCmd.length);
   t('www/native-ble.js đúng 9063 bytes (bản vx-atelier có thêm Native UI fixes 21/11/2026)', fs.statSync(path.join(ROOT, 'www/native-ble.js')).size === 9063);
   t('www/vx3d.js đúng 18372 bytes như vx-mark4 ee17df1', fs.statSync(path.join(ROOT, 'www/vx3d.js')).size === 18372);
   t('native-ble.js khóa zoom (viewport maximum-scale=1, user-scalable=no)', bleJs.includes('maximum-scale=1') && bleJs.includes('user-scalable=no'));
@@ -179,6 +215,68 @@ const vx3dJs = read('www/vx3d.js');
   t('public/index.html sau cap sync giống hệt www/index.html', sha('ios/App/App/public/index.html') === sha('www/index.html'));
   t('public có đủ native-ble.js, vx3d.js, img, sounds, lib', ['ios/App/App/public/native-ble.js', 'ios/App/App/public/vx3d.js', 'ios/App/App/public/img/lento.bin', 'ios/App/App/public/lib/hls.min.js'].every(exists));
   t('không có file secret/cert/key trong gói', !fs.readdirSync(ROOT).some(f => /\.(p12|p8|key|pem|mobileprovision)$/.test(f)) && (!exists('certs') || read('.gitignore').includes('certs/')));
+
+  console.log('\n[7] G1/G2: profile + codec + stepper (jsdom nạp loader, fetch stub trả speaker-profiles.json)');
+  // Profile đọc trực tiếp từ file (không qua DOM).
+  t('speaker-profiles.json parse được, schemaVersion 1', profileJson.schemaVersion === 1);
+  t('catalogue đúng 1 model vx-mark4', Array.isArray(profileJson.models) && profileJson.models.length === 1 && profileJson.models[0].id === 'vx-mark4');
+  // Hồi quy: vendorId phải đúng 0x7658 (30296) như code cũ — từng bị chép sai
+  // thành 0x7758 (30552) khi tách profile; sai là loa không nhận lệnh GAIA và
+  // mọi phản hồi đều bị loại (chỉ lộ trên loa thật, jsdom không bắt được).
+  t('vendorId đúng 0x7658 (30296)', !!mark4Profile && mark4Profile.protocol.vendorId === 0x7658, String(mark4Profile && mark4Profile.protocol.vendorId));
+  const bands = {};
+  (mark4Profile.tone.bands || []).forEach(b => { bands[b.key] = b; });
+  t('tone band Bass ±6 dB bước 0,5 dB', !!bands.bass && bands.bass.minDb === -6 && bands.bass.maxDb === 6 && bands.bass.stepDb === 0.5, JSON.stringify(bands.bass));
+  t('tone band Treble ±8 dB bước 0,5 dB', !!bands.treble && bands.treble.minDb === -8 && bands.treble.maxDb === 8 && bands.treble.stepDb === 0.5, JSON.stringify(bands.treble));
+  // Loader + codec + stepper trong jsdom: jsdom không tải script src ngoài
+  // nên eval tay speaker-profile.js/tone-codec.js như Capacitor nạp chúng,
+  // fetch stub trả catalogue local (mẫu mục [1] + kiểm chứng G2 của agent
+  // UI, 28 PASS). Stub scrollTo của mục [1] vẫn giữ nguyên ở đây.
+  const vc2 = new VirtualConsole();
+  const errors2 = [];
+  vc2.on('jsdomError', e => errors2.push(String((e && e.message) || e)));
+  const dom2 = new JSDOM(html, {
+    url: 'http://localhost/', runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: vc2,
+    beforeParse(w) {
+      w.matchMedia = w.matchMedia || (q => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+      w.ResizeObserver = w.ResizeObserver || class { observe() {} unobserve() {} disconnect() {} };
+      w.scrollTo = () => {};
+      w.fetch = async url => {
+        if (String(url).includes('speaker-profiles.json'))
+          return { ok: true, json: async () => JSON.parse(JSON.stringify(profileJson)) };
+        throw new Error('unexpected fetch: ' + url);
+      };
+      w.eval(profileJs);
+      w.eval(toneCodecJs);
+    },
+  });
+  await new Promise(r => dom2.window.addEventListener('load', r));
+  await new Promise(r => setTimeout(r, 2500)); // nạp profile (async) + splash 1500 ms
+  const win2 = dom2.window, doc2 = win2.document;
+  t('trang tải không lỗi jsdom (có profile+codec)', errors2.length === 0, errors2.slice(0, 3).join(' | '));
+  t('loader nạp được, getDefaultProfile() trả đúng mark 4', !!win2.VXSpeakerProfiles && win2.VXSpeakerProfiles.isLoaded() && !!win2.VXSpeakerProfiles.getDefaultProfile() && win2.VXSpeakerProfiles.getDefaultProfile().id === 'vx-mark4');
+  // Codec spot-check — hồi quy đầy đủ (21.685 điểm golden) đã có trong
+  // test-tone-codec.js; ở đây chỉ vài điểm để test chính cũng bắt được nếu
+  // codec vỡ (vd. encode/decode đổi dấu, đổi góc).
+  const TC = win2.ToneCodec;
+  const enc00 = TC && TC.encode({ bass: 0, treble: 0 });
+  t('codec spot-check: encode {bass:0,treble:0} → angle 0 / distance 0', !!enc00 && enc00.angle === 0 && enc00.distance === 0, JSON.stringify(enc00));
+  const enc60 = TC && TC.encode({ bass: 6, treble: 0 });
+  t('codec spot-check: encode {bass:6,treble:0} → angle 45 / distance 50', !!enc60 && enc60.angle === 45 && enc60.distance === 50, JSON.stringify(enc60));
+  const dec45 = TC && TC.decode(45, 50);
+  t('codec spot-check: decode(45, 50) → {bass:6,treble:0}', !!dec45 && dec45.bass === 6 && dec45.treble === 0, JSON.stringify(dec45));
+  const dec00 = TC && TC.decode(0, 0);
+  t('codec spot-check: decode(0, 0) → {bass:0,treble:0}', !!dec00 && dec00.bass === 0 && dec00.treble === 0, JSON.stringify(dec00));
+  // Stepper trong DOM sau khi trang load (có profile).
+  t('2 hàng stepper có mặt trong DOM sau khi trang load (có profile)', doc2.querySelectorAll('.stepper').length === 2, doc2.querySelectorAll('.stepper').length);
+  t('vạch nấc Bass 25 / Treble 33 (từ profile)', doc2.querySelector('.stepper[data-k="bass"] .stepticks').children.length === 25 && doc2.querySelector('.stepper[data-k="treble"] .stepticks').children.length === 33,
+    'bass=' + doc2.querySelector('.stepper[data-k="bass"] .stepticks').children.length + ' treble=' + doc2.querySelector('.stepper[data-k="treble"] .stepticks').children.length);
+  // Bấm + Bass: pointerdown + pointerup như chạm thật (handler click của
+  // nút lọc e.detail !== 0 nên không dùng el.click()).
+  const tap2 = btn => { const ev = type => new win2.MouseEvent(type, { bubbles: true, cancelable: true }); btn.dispatchEvent(ev('pointerdown')); btn.dispatchEvent(ev('pointerup')); };
+  const bassPlus = doc2.querySelector('.stepper[data-k="bass"] [data-dir="1"]');
+  tap2(bassPlus);
+  t('bấm + Bass đổi đúng 0,5 dB', !!win2.vxToneState && win2.vxToneState().bass === 0.5 && doc2.getElementById('numBass').textContent.includes('+0.5'), JSON.stringify(win2.vxToneState && win2.vxToneState()) + ' | ' + doc2.getElementById('numBass').textContent);
 
   console.log(`\n${pass} PASS, ${fail} FAIL`);
   if (fail) console.log('FAIL: ' + fails.join(' | '));
